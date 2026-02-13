@@ -29,7 +29,6 @@ import com.liferay.portal.kernel.model.CountryLocalizationTable;
 import com.liferay.portal.kernel.model.CountryTable;
 import com.liferay.portal.kernel.model.ModelHintsUtil;
 import com.liferay.portal.kernel.model.Organization;
-import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.SystemEventConstants;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.search.BaseModelSearchResult;
@@ -37,7 +36,6 @@ import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.service.AddressLocalService;
 import com.liferay.portal.kernel.service.OrganizationLocalService;
 import com.liferay.portal.kernel.service.RegionLocalService;
-import com.liferay.portal.kernel.service.ResourceLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.systemevent.SystemEvent;
@@ -91,15 +89,7 @@ public class CountryLocalServiceImpl extends CountryLocalServiceBaseImpl {
 		country.setSubjectToVAT(subjectToVAT);
 		country.setZipRequired(zipRequired);
 
-		country = countryPersistence.update(country);
-
-		// Resources
-
-		_resourceLocalService.addResources(
-			user.getCompanyId(), 0, user.getUserId(), Country.class.getName(),
-			country.getCountryId(), false, false, false);
-
-		return country;
+		return countryPersistence.update(country);
 	}
 
 	@Override
@@ -130,11 +120,6 @@ public class CountryLocalServiceImpl extends CountryLocalServiceBaseImpl {
 		// Regions
 
 		_regionLocalService.deleteCountryRegions(country.getCountryId());
-
-		// Resources
-
-		_resourceLocalService.deleteResource(
-			country, ResourceConstants.SCOPE_INDIVIDUAL);
 
 		return country;
 	}
@@ -486,9 +471,6 @@ public class CountryLocalServiceImpl extends CountryLocalServiceBaseImpl {
 
 	@BeanReference(type = RegionLocalService.class)
 	private RegionLocalService _regionLocalService;
-
-	@BeanReference(type = ResourceLocalService.class)
-	private ResourceLocalService _resourceLocalService;
 
 	@BeanReference(type = UserLocalService.class)
 	private UserLocalService _userLocalService;

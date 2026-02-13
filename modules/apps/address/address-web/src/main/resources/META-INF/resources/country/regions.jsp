@@ -33,15 +33,13 @@ SearchContainer<Region> regionSearchContainer = RegionSearchContainerFactory.cre
 				<%
 				List<String> availableActions = new ArrayList<>();
 
-				if (CountryPermissionUtil.contains(permissionChecker, region.getCountryId(), ActionKeys.UPDATE)) {
-					availableActions.add("deleteRegions");
+				availableActions.add("deleteRegions");
 
-					if (region.getActive()) {
-						availableActions.add("deactivateRegions");
-					}
-					else {
-						availableActions.add("activateRegions");
-					}
+				if (region.getActive()) {
+					availableActions.add("deactivateRegions");
+				}
+				else {
+					availableActions.add("activateRegions");
 				}
 
 				row.setData(
@@ -58,7 +56,7 @@ SearchContainer<Region> regionSearchContainer = RegionSearchContainerFactory.cre
 				</portlet:renderURL>
 
 				<%
-				if (!CountryPermissionUtil.contains(permissionChecker, region.getCountryId(), ActionKeys.UPDATE)) {
+				if (!PortalPermissionUtil.contains(permissionChecker, ActionKeys.MANAGE_COUNTRIES)) {
 					rowURL = null;
 				}
 				%>
