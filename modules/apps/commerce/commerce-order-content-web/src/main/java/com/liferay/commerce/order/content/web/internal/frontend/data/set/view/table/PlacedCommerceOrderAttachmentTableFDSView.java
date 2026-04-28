@@ -5,7 +5,7 @@
 
 package com.liferay.commerce.order.content.web.internal.frontend.data.set.view.table;
 
-import com.liferay.commerce.order.content.web.internal.constants.CommerceOrderFragmentFDSNames;
+import com.liferay.commerce.constants.CommerceOrderAttachmentFDSNames;
 import com.liferay.frontend.data.set.view.FDSView;
 import com.liferay.frontend.data.set.view.table.BaseTableFDSView;
 import com.liferay.frontend.data.set.view.table.FDSTableSchema;
@@ -21,7 +21,7 @@ import org.osgi.service.component.annotations.Reference;
  * @author Tancredi Covioli
  */
 @Component(
-	property = "frontend.data.set.name=" + CommerceOrderFragmentFDSNames.PLACED_ORDER_ATTACHMENTS,
+	property = "frontend.data.set.name=" + CommerceOrderAttachmentFDSNames.PLACED_ORDER_ATTACHMENTS,
 	service = FDSView.class
 )
 public class PlacedCommerceOrderAttachmentTableFDSView

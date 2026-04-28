@@ -5,7 +5,7 @@
 
 package com.liferay.commerce.order.content.web.internal.frontend.data.set;
 
-import com.liferay.commerce.order.content.web.internal.constants.CommerceOrderFragmentFDSNames;
+import com.liferay.commerce.constants.CommerceOrderAttachmentFDSNames;
 import com.liferay.frontend.data.set.SystemFDSEntry;
 
 import org.osgi.service.component.annotations.Component;
@@ -14,7 +14,7 @@ import org.osgi.service.component.annotations.Component;
  * @author Tancredi Covioli
  */
 @Component(
-	property = "frontend.data.set.name=" + CommerceOrderFragmentFDSNames.PLACED_ORDER_ATTACHMENTS,
+	property = "frontend.data.set.name=" + CommerceOrderAttachmentFDSNames.PLACED_ORDER_ATTACHMENTS,
 	service = SystemFDSEntry.class
 )
 public class PlacedCommerceOrderAttachmentsSystemFDSEntry
@@ -27,7 +27,7 @@ public class PlacedCommerceOrderAttachmentsSystemFDSEntry
 
 	@Override
 	public String getName() {
-		return CommerceOrderFragmentFDSNames.PLACED_ORDER_ATTACHMENTS;
+		return CommerceOrderAttachmentFDSNames.PLACED_ORDER_ATTACHMENTS;
 	}
 
 	@Override
