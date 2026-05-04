@@ -17,6 +17,7 @@ export class CommerceAdminOrderAttachmentsPage extends CommerceDNDTablePage {
 	readonly page: Page;
 	readonly rowActionsButton: (rowValue: string) => Locator;
 	readonly rowByTitle: (title: string) => Locator;
+	readonly sidePanelCancelButton: Locator;
 	readonly sidePanelFileInput: Locator;
 	readonly sidePanelFrame: FrameLocator;
 	readonly sidePanelPriorityInput: Locator;
@@ -61,6 +62,9 @@ export class CommerceAdminOrderAttachmentsPage extends CommerceDNDTablePage {
 		this.rowByTitle = (title: string) =>
 			page.getByRole('row', {name: title});
 		this.sidePanelFrame = page.frameLocator('.fds-side-panel iframe');
+		this.sidePanelCancelButton = this.sidePanelFrame.getByRole('button', {
+			name: 'Cancel',
+		});
 		this.sidePanelFileInput =
 			this.sidePanelFrame.locator('input[type="file"]');
 		this.sidePanelPriorityInput =
