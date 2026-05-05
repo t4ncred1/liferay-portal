@@ -220,6 +220,22 @@ public class BasePersistenceImpl
 		_sessionFactory.closeSession(session);
 	}
 
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	public int countAll() {
+		CTPersistenceHelper ctPersistenceHelper = getCTPersistenceHelper();
+
+		if (ctPersistenceHelper == null) {
+			return _countAll();
+		}
+
+		try (SafeCloseable safeCloseable =
+				ctPersistenceHelper.setCTCollectionIdWithSafeCloseable(
+					(Class)_modelClass)) {
+
+			return _countAll();
+		}
+	}
+
 	@Override
 	public long countWithDynamicQuery(DynamicQuery dynamicQuery) {
 		return countWithDynamicQuery(
@@ -448,6 +464,39 @@ public class BasePersistenceImpl
 		return _fetchByPrimaryKeys(primaryKeys, ctPersistenceHelper);
 	}
 
+	public List<T> findAll() {
+		return findAll(QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+	}
+
+	public List<T> findAll(int start, int end) {
+		return findAll(start, end, null);
+	}
+
+	public List<T> findAll(
+		int start, int end, OrderByComparator<T> orderByComparator) {
+
+		return findAll(start, end, orderByComparator, true);
+	}
+
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	public List<T> findAll(
+		int start, int end, OrderByComparator<T> orderByComparator,
+		boolean useFinderCache) {
+
+		CTPersistenceHelper ctPersistenceHelper = getCTPersistenceHelper();
+
+		if (ctPersistenceHelper == null) {
+			return _findAll(start, end, orderByComparator, useFinderCache);
+		}
+
+		try (SafeCloseable safeCloseable =
+				ctPersistenceHelper.setCTCollectionIdWithSafeCloseable(
+					(Class)_modelClass)) {
+
+			return _findAll(start, end, orderByComparator, useFinderCache);
+		}
+	}
+
 	@Override
 	public T findByPrimaryKey(Serializable primaryKey) throws E {
 		T model = fetchByPrimaryKey(primaryKey);
@@ -641,6 +690,12 @@ public class BasePersistenceImpl
 	@Override
 	public T remove(T model) {
 		return removeByFunction(model, this::removeImpl);
+	}
+
+	public void removeAll() {
+		for (T model : findAll()) {
+			remove(model);
+		}
 	}
 
 	@Override
@@ -982,6 +1037,41 @@ public class BasePersistenceImpl
 
 	protected void setModelImplClass(Class<? extends T> modelImplClass) {
 		_modelImplClass = modelImplClass;
+
+		String className = modelImplClass.getName();
+
+		_finderPathCountAll = new FinderPath(
+			className.concat(".List2"), "countAll", new String[0],
+			new String[0], false);
+		_finderPathWithoutPaginationFindAll = new FinderPath(
+			className.concat(".List2"), "findAll", new String[0], new String[0],
+			true);
+		_finderPathWithPaginationFindAll = new FinderPath(
+			className.concat(".List1"), "findAll", new String[0], new String[0],
+			true);
+
+		try {
+			_defaultOrderByJPQL = (String)modelImplClass.getField(
+				"ORDER_BY_JPQL"
+			).get(
+				null
+			);
+
+			String entityAlias = (String)modelImplClass.getField(
+				"ENTITY_ALIAS"
+			).get(
+				null
+			);
+
+			_entityAliasPrefix = entityAlias.concat(".");
+
+			_countSQL = StringBundler.concat(
+				"SELECT COUNT(", entityAlias, ") FROM ",
+				_modelClass.getSimpleName(), " ", entityAlias);
+		}
+		catch (ReflectiveOperationException reflectiveOperationException) {
+			ReflectionUtil.throwException(reflectiveOperationException);
+		}
 	}
 
 	protected void setModelPKClass(Class<? extends Serializable> clazz) {
@@ -1062,6 +1152,36 @@ public class BasePersistenceImpl
 	 */
 	@Deprecated
 	protected boolean finderCacheEnabled = true;
+
+	private int _countAll() {
+		FinderCache finderCache = getFinderCache();
+
+		Long count = (Long)finderCache.getResult(
+			_finderPathCountAll, FINDER_ARGS_EMPTY, this);
+
+		if (count == null) {
+			Session session = null;
+
+			try {
+				session = openSession();
+
+				Query query = session.createQuery(_countSQL);
+
+				count = (Long)query.uniqueResult();
+
+				finderCache.putResult(
+					_finderPathCountAll, FINDER_ARGS_EMPTY, count);
+			}
+			catch (Exception exception) {
+				throw processException(exception);
+			}
+			finally {
+				closeSession(session);
+			}
+		}
+
+		return count.intValue();
+	}
 
 	@SuppressWarnings("unchecked")
 	private T _fetchByPrimaryKey(Serializable primaryKey) {
@@ -1266,6 +1386,79 @@ public class BasePersistenceImpl
 		}
 
 		return map;
+	}
+
+	@SuppressWarnings("unchecked")
+	private List<T> _findAll(
+		int start, int end, OrderByComparator<T> orderByComparator,
+		boolean useFinderCache) {
+
+		FinderPath finderPath = null;
+		Object[] finderArgs = null;
+
+		if ((start == QueryUtil.ALL_POS) && (end == QueryUtil.ALL_POS) &&
+			(orderByComparator == null)) {
+
+			if (useFinderCache) {
+				finderPath = _finderPathWithoutPaginationFindAll;
+				finderArgs = FINDER_ARGS_EMPTY;
+			}
+		}
+		else if (useFinderCache) {
+			finderPath = _finderPathWithPaginationFindAll;
+			finderArgs = new Object[] {start, end, orderByComparator};
+		}
+
+		FinderCache finderCache = getFinderCache();
+
+		List<T> list = null;
+
+		if (useFinderCache) {
+			list = (List<T>)finderCache.getResult(finderPath, finderArgs, this);
+		}
+
+		if (list == null) {
+			String sql = null;
+
+			if (orderByComparator == null) {
+				sql = getSelectSQL().concat(_defaultOrderByJPQL);
+			}
+			else {
+				StringBundler sb = new StringBundler(
+					2 + (orderByComparator.getOrderByFields().length * 2));
+
+				sb.append(getSelectSQL());
+
+				appendOrderByComparator(
+					sb, _entityAliasPrefix, orderByComparator);
+
+				sql = sb.toString();
+			}
+
+			Session session = null;
+
+			try {
+				session = openSession();
+
+				Query query = session.createQuery(sql);
+
+				list = (List<T>)QueryUtil.list(query, getDialect(), start, end);
+
+				cacheResult(list);
+
+				if (useFinderCache) {
+					finderCache.putResult(finderPath, finderArgs, list);
+				}
+			}
+			catch (Exception exception) {
+				throw processException(exception);
+			}
+			finally {
+				closeSession(session);
+			}
+		}
+
+		return list;
 	}
 
 	private String[] _getAliasTypes(
@@ -1488,11 +1681,17 @@ public class BasePersistenceImpl
 			Timestamp.class, Type.TIMESTAMP
 		).build();
 
+	private String _countSQL;
 	private int _databaseOrderByMaxColumns;
 	private long _dataLimitModelMaxCount;
 	private DataSource _dataSource;
 	private DB _db;
 	private Map<String, String> _dbColumnNames = Collections.emptyMap();
+	private String _defaultOrderByJPQL;
+	private String _entityAliasPrefix;
+	private FinderPath _finderPathCountAll;
+	private FinderPath _finderPathWithoutPaginationFindAll;
+	private FinderPath _finderPathWithPaginationFindAll;
 	private Class<T> _modelClass;
 	private Class<? extends T> _modelImplClass;
 	private ModelPKType _modelPKType = ModelPKType.COMPOUND;

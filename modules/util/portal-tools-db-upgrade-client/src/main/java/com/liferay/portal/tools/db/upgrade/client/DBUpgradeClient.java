@@ -799,19 +799,20 @@ public class DBUpgradeClient {
 				}
 			}
 
+			File dir = _appServer.getDir();
+
 			String appServerDirName = _requestDirName(
 				true,
 				new File(
 					_portalUpgradeExtProperties.getProperty("liferay.home")),
-				_appServer.getDir(
-				).getPath(),
+				dir.getPath(),
 				"Please enter your application server directory");
 
 			if (appServerDirName != null) {
 				_appServer.setDirName(appServerDirName);
-			}
 
-			File dir = _appServer.getDir();
+				dir = _appServer.getDir();
+			}
 
 			String extraLibDirNames = _requestDirNames(
 				false, dir, _appServer.getExtraLibDirNames(),
@@ -841,7 +842,6 @@ public class DBUpgradeClient {
 			}
 
 			_appServerProperties.setProperty("dir", dir.getCanonicalPath());
-
 			_appServerProperties.setProperty(
 				"extra.lib.dirs", _appServer.getExtraLibDirNames());
 			_appServerProperties.setProperty(

@@ -12,7 +12,7 @@ Prepare a Liferay ticket for development. Drive every Jira interaction through t
 
 ## 1. Resolve the Ticket
 
-Accept a key (`LPD-86295`) or a browse URL from `${ARGUMENTS}`. Ask the user when nothing is supplied.
+Accept a key (`LPD-86295`) or a browse URL from `${ARGUMENTS}`. When nothing is supplied and `${PWD}` matches `*/liferay-portal-<KEY>` where `<KEY>` matches the Jira pattern `[A-Z]+-[0-9]+`, derive the key from the directory name. Otherwise, ask the user.
 
 ## 2. Prerequisites
 
@@ -47,7 +47,7 @@ Skip for **Bug**. For **Story** / **Task**, refetch the parent's subtasks until 
 
 ## 6. Create a Git Branch
 
-Branch off the current HEAD, named after the **target** key. When the branch already exists, check it out instead.
+Branch off the current HEAD, named after the **target** key. When the branch already exists, check it out instead. When `${PWD}` matches `*/liferay-portal-<name>`, the session is running inside a Liferay worktree that already has branch `<name>` checked out — skip this step and invoke the `worktree-setup` skill (action `new`) instead to provision the bundle, ports, and database.
 
 ## 7. Make a Plan
 

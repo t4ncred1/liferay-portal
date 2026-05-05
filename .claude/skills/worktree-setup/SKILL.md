@@ -32,6 +32,7 @@ Parse `${ARGUMENTS}` and conversation context:
 | Tomcat Shutdown | 8005 | `tomcat-*/conf/server.xml` |
 | Tomcat AJP | 8009 | `tomcat-*/conf/server.xml` |
 | HTTPS Redirect | 8443 | `tomcat-*/conf/server.xml` |
+| JPDA Debug | 8000 | `tomcat-*/bin/setenv.sh` |
 | OSGi Console | 11311 | `tomcat-*/webapps/ROOT/WEB-INF/classes/portal-developer.properties` |
 | ES Sidecar HTTP | 9201 | `osgi/configs/...ElasticsearchConfiguration.config` |
 | ES Transport | 9301 | `osgi/configs/...ElasticsearchConfiguration.config` |
@@ -55,7 +56,11 @@ Rule: strip `liferay-portal-` prefix, lowercase, replace nonalphanumeric with `_
 
 ## Full Setup
 
-### 1. Create the Worktree
+### 1. Locate or Create the Worktree
+
+If the current working directory matches `*/liferay-portal-<name>`, the worktree already exists (either created by `claude --worktree <name>` through the **WorktreeCreate** hook, or by a previous manual run). Use the current cwd as `<WORKTREE_DIR>` and the directory name as `<DIR_NAME>`, then continue.
+
+Otherwise, create one off `master`:
 
 ```bash
 git worktree add -b <BRANCH> ../<DIR_NAME> master
@@ -78,10 +83,10 @@ app.server.parent.dir=${project.dir}/bundle
 Check whether a bundle already exists by looking for a `tomcat-*` directory inside the resolved bundle parent directory (see step 4a).
 
 - **Bundle exists:** Skip `ant all`. Inform the user the existing bundle will be reused. If the user explicitly requests a rebuild, run `ant all`.
-- **No bundle:** Run `ant all`:
+- **No bundle:** Before running `ant all`, try to reuse the main worktree's bundle. Locate the `liferay-portal` worktree (no suffix) via `git worktree list --porcelain`, resolve its bundle directory using the same logic as step 4a, and read `.githash` from it. When that hash equals `git rev-parse HEAD` in the current worktree, or when the user explicitly asks to copy or reuse the main bundle, reuse it into `<WORKTREE_DIR>/bundle` and skip `ant all`. Always reuse by making a full copy — never by symlinking or sharing the folder. Otherwise, run it:
 
 ```bash
-cd <WORKTREE_DIR> && ant all
+cd <WORKTREE_DIR> && ant setup-profile-dxp && ant all
 ```
 
 If `ant all` fails, stop and surface the full error to the user — do not continue to port configuration.
@@ -104,7 +109,7 @@ If `ant all` fails, stop and surface the full error to the user — do not conti
 
 1. If `.worktree-port-offset` exists in the bundle dir, read it
 
-1. Otherwise, scan ports starting from offset=1: for each candidate offset, check if ports `8080+N`, `8005+N`, `11311+N`, `9201+N`, `9301+N`, `4000+N` are all free using `nc -z localhost <port>`. First offset where ALL are free wins.
+1. Otherwise, scan ports starting from offset=1: for each candidate offset, check if ports `8080+N`, `8005+N`, `8000+N`, `11311+N`, `9201+N`, `9301+N`, `4000+N` are all free using `nc -z localhost <port>`. First offset where ALL are free wins.
 
 1. Save the chosen offset to `<BUNDLE_DIR>/.worktree-port-offset`
 
@@ -139,7 +144,19 @@ Use `"${SED_INPLACE[@]}"` in place of `sed -i` for all subsequent calls:
 
 Skip if target HTTP port is already present (idempotent).
 
-#### 4d. Patch portal-developer.properties
+#### 4d. Patch setenv.sh
+
+File: `<TOMCAT>/bin/setenv.sh`
+
+Replace the JPDA debug port (this file gets **wiped on rebuild**):
+
+```bash
+"${SED_INPLACE[@]}" 's/^JPDA_ADDRESS="[0-9]*"/JPDA_ADDRESS="<8000+N>"/' <TOMCAT>/bin/setenv.sh
+```
+
+Skip if the target value is already present.
+
+#### 4e. Patch portal-developer.properties
 
 File: `<TOMCAT>/webapps/ROOT/WEB-INF/classes/portal-developer.properties`
 
@@ -151,7 +168,7 @@ module.framework.properties.osgi.console=<11311+N>
 
 Use `"${SED_INPLACE[@]}" 's/osgi\.console=[0-9]*/osgi.console=<TARGET>/'` to handle any current value.
 
-#### 4e. Create OSGi Config Files
+#### 4f. Create OSGi Config Files
 
 These get **wiped on rebuild** — always overwrite.
 
@@ -181,7 +198,7 @@ port="<32763+N>"
 port="<42763+N>"
 ```
 
-#### 4f. Patch glowroot/admin.json
+#### 4g. Patch glowroot/admin.json
 
 File: `<BUNDLE>/glowroot/admin.json`
 
@@ -191,7 +208,7 @@ Use `jq` to set `.web.port` to `4000+N`. Skip if already correct (survives rebui
 jq '.web.port = <TARGET>' admin.json > admin.json.tmp && mv admin.json.tmp admin.json
 ```
 
-#### 4g. Patch portal-ext.properties
+#### 4h. Patch portal-ext.properties
 
 File: `<BUNDLE>/portal-ext.properties`
 
@@ -209,7 +226,7 @@ users.reminder.queries.enabled=false
 
 **Important:** The property is `portal.instance.inet.socket.address` (with `inet`), NOT `portal.instance.http.socket.address`. Also remove any old `portal.instance.http.socket.address` lines.
 
-#### 4h. Configure MySQL Database
+#### 4i. Configure MySQL Database
 
 Derive the DB name from the worktree directory (see Database Naming above).
 
@@ -232,20 +249,16 @@ mysql --execute 'CREATE DATABASE IF NOT EXISTS <DB_NAME> CHARACTER SET utf8mb4 C
 
 If `mysql` CLI is unavailable or fails, print the command for the user to run manually. Show errors — never swallow them with `2>/dev/null`.
 
-#### 4i. Clear OSGi State
-
-```bash
-rm -rf <BUNDLE>/osgi/state
-```
-
 #### 4j. Print Summary
 
 Print a table of all assigned ports, the DB name, the Liferay URL, and the Glowroot URL.
 
 ### 5. Start
 
+Start Tomcat with the JPDA debugger attached. `jpda run` is a foreground command, so run it in the background so that the call does not block:
+
 ```bash
-<BUNDLE>/tomcat-*/bin/catalina.sh start
+<BUNDLE>/tomcat-*/bin/catalina.sh jpda run
 ```
 
 Tell the user how to follow the log:
@@ -263,6 +276,7 @@ After `ant all` rebuilds, rerun the Configure Ports steps. The saved offset is r
 | server.xml | Yes | Skip if already patched |
 | glowroot/admin.json | Yes | Skip if already patched |
 | portal-ext.properties | Yes | Skip if already correct |
+| setenv.sh | **No** | Always reapply |
 | portal-developer.properties | **No** | Always reapply |
 | osgi/configs/* | **No** | Always overwrite |
 

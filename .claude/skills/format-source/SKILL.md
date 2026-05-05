@@ -7,7 +7,7 @@ name: format-source
 
 # Format Source
 
-All the code is strictly formatted using the source formatter. This is how it works:
+All the code is strictly formatted using the source formatter (Java, JavaScript, JSON, JSP, Markdown, properties, shell, XML, YAML, and others). This is how it works:
 
 Run for a specific module:
 
@@ -20,6 +20,8 @@ Run across the entire codebase:
 ```bash
 cd <repo-root>/portal-impl && ant format-source-current-branch
 ```
+
+`ant format-source-current-branch` only inspects committed files, so run it after creating the commit, and amend any formatter changes or fixes into that commit.
 
 In both cases, if there are issues to be fixed, the formatter will list them. Fix them.
 
